@@ -78,7 +78,7 @@ void print_rabin_poly_to_file(FILE *out_file, struct rabin_polynomial *poly,int 
     if(poly == NULL)
         return;
     
-    fprintf(out_file, "%llu,%u %llu",poly->start,poly->length,poly->polynomial);
+    fprintf(out_file, "%" PRIu64 ",%" PRIu16 " %" PRIu64 "",poly->start,poly->length,poly->polynomial);
     
     if(new_line)
         fprintf(out_file, "\n");
@@ -264,7 +264,7 @@ struct rabin_polynomial *get_file_rabin_polys(FILE *file_to_read) {
 /**
  * Allocates an empty block
  */
-struct rab_block_info *init_empty_block() {
+struct rab_block_info *init_empty_block(void) {
     
     initialize_rabin_polynomial_defaults();
 	struct rab_block_info *block=malloc(sizeof(struct rab_block_info));
@@ -327,7 +327,7 @@ struct rab_block_info *read_rabin_block(void *buf, ssize_t size, struct rab_bloc
 
     ssize_t i;
     for(i=0;i<size;i++) {
-    	char cur_byte=*((char *)(buf+i));
+    	char cur_byte=*((char *)(buf)+i);
         char pushed_out=block->current_window_data[block->window_pos];
         block->current_window_data[block->window_pos]=cur_byte;
         block->cur_roll_checksum=(block->cur_roll_checksum*rabin_polynomial_prime)+cur_byte;
