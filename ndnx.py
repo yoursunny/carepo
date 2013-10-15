@@ -7,7 +7,7 @@ NDNX_VERSION_FILE='ndn/ndn.h'
 NDNX_VERSION_CODE='''
 #include <ndn/ndn.h>
 #include <stdio.h>
-int main() { printf ("%d.%d.%d", ((NDN_API_VERSION/100000) % 100), ((NDN_API_VERSION/1000) % 100), (NDN_API_VERSION % 1000)); return 0; }
+int main(void) { printf ("%d.%d.%d", ((NDN_API_VERSION/100000) % 100), ((NDN_API_VERSION/1000) % 100), (NDN_API_VERSION % 1000)); return 0; }
 '''
 
 def options(opt):
@@ -60,7 +60,7 @@ def check_ndnx(self,*k,**kw):
 	root=self.ndnx_get_root(*k,**kw);
 	self.env.NDNX_VERSION=self.ndnx_get_version(root)
 	self.env['INCLUDES_%s'%var]='%s/%s'%(root,"include");
-	self.env['LIB_%s'%var]=["ccn"]+self.env["LIB_SSL"]
+	self.env['LIB_%s'%var]=["ndn"]+self.env["LIB_SSL"]
 	self.env['LIBPATH_%s'%var]='%s/%s'%(root,"lib")
 	self.end_msg(self.env.NDNX_VERSION)
 	if Logs.verbose:
