@@ -15,3 +15,14 @@ void segment_list_dtor(struct segment_list** selfp) {
   *selfp = NULL;
 }
 
+void segment_list_print(struct segment_list* self, FILE* output) {
+  for (uint32_t i = 0; i < self->count; ++i) {
+    struct segment* seg = self->list + i;
+    fprintf(output, "%6" PRIu32 " [%8" PRIu64 ",%8" PRIu64 "]\n        ", i, seg->start, seg->start + seg->length - 1);
+    for (int index = 0; index < sizeof(seg->hash); ++index) {
+      fprintf(output, "%02" PRIX8 "", seg->hash[index]);
+    }
+    fprintf(output, "\n");
+  }
+}
+

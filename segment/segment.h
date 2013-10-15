@@ -1,5 +1,5 @@
-#ifndef CAREPO_SEGMENT_H_
-#define CAREPO_SEGMENT_H_
+#ifndef CAREPO_SEGMENT_SEGMENT_H_
+#define CAREPO_SEGMENT_SEGMENT_H_
 #include "defs.h"
 
 struct segment {
@@ -15,5 +15,6 @@ struct segment_list {
 
 struct segment_list* segment_list_ctor(uint32_t count);
 void segment_list_dtor(struct segment_list** selfp);
+void segment_list_print(struct segment_list* self, FILE* output);
 
-#endif//CAREPO_SEGMENT_H_
+#endif//CAREPO_SEGMENT_SEGMENT_H_
