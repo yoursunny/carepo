@@ -48,7 +48,7 @@ def build(bld):
 
     if bld.env.UNIT:
         bld.program(target='unittest',
-            source=bld.path.ant_glob([subdir+'/*_test*.c' for subdir in source_subdirs]) + ['unittest.c'],
+            source=bld.path.ant_glob([subdir+'/*_test*.c' for subdir in source_subdirs] + ['command/unittest.c']),
             use='objs CUNIT',
             install_path=None,
             )
