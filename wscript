@@ -46,6 +46,12 @@ def build(bld):
         use='NDNX',
         )
 
+    bld.program(target='rabinseg',
+        source=bld.path.ant_glob(['command/rabinseg.c']),
+        use='objs CUNIT',
+        install_path=None,
+        )
+
     if bld.env.UNIT:
         bld.program(target='unittest',
             source=bld.path.ant_glob([subdir+'/*_test*.c' for subdir in source_subdirs] + ['command/unittest.c']),
