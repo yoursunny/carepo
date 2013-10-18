@@ -48,7 +48,13 @@ def build(bld):
 
     bld.program(target='rabinseg',
         source=bld.path.ant_glob(['command/rabinseg.c']),
-        use='objs CUNIT',
+        use='objs',
+        install_path=None,
+        )
+
+    bld.program(target='caput',
+        source=bld.path.ant_glob(['command/caput.c']),
+        use='objs',
         install_path=None,
         )
 
