@@ -3,6 +3,11 @@
 #include <ndn/digest.h>
 
 struct segment_list* segment_rabin(FILE* file) {
+  rabin_sliding_window_size = 31;
+  rabin_polynomial_max_block_size = 8192;
+  rabin_polynomial_min_block_size = 1024;
+  rabin_polynomial_average_block_size = 4096;
+
   if (0 != fseek(file, 0, SEEK_SET)) return NULL;
   struct rabin_polynomial* head = get_file_rabin_polys(file);
   if (head == NULL) return NULL;
