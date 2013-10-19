@@ -1,5 +1,4 @@
 #include "writer.h"
-#include <ndn/uri.h>
 
 struct file_writer* file_writer_ctor(struct segment_list* sl, FILE* file, struct ndn* h, struct ndn_charbuf* name, bool sign_segments) {
   struct file_writer* self = calloc(1, sizeof(*self));
@@ -24,6 +23,9 @@ struct file_writer* file_writer_ctor(struct segment_list* sl, FILE* file, struct
   segment_list_to_metadata(sl, self->metadata);
   self->total_metadata_blocks = self->remaining_metadata_blocks = self->metadata->length/FILE_WRITER_METADATA_BLOCKSZ + (self->metadata->length%FILE_WRITER_METADATA_BLOCKSZ == 0 ? 0 : 1);
   self->sent_metadata_blocks = calloc(self->total_metadata_blocks, sizeof(bool));
+  
+  LOG("file_writer_ctor "); LOG_name(self->name->buf, self->name->length);
+  LOG("\n  %" PRIu32 " segments, %d metadata blocks\n", self->sl->count, self->total_metadata_blocks);
   return self;
 }
 
@@ -56,8 +58,10 @@ bool file_writer_run(struct file_writer* self) {
   if (self->remaining_segments == 0 && self->remaining_metadata_blocks == 0) {
     ndn_set_interest_filter(self->h, self->name, NULL);
     ndn_run(self->h, 1);
+    LOG("file_writer_run OK\n");
     return true;
   }
+  LOG("file_writer_run TIMEOUT\n");
   return false;
 }
 
@@ -78,6 +82,7 @@ bool file_writer_startwrite(struct file_writer* self) {
   res = ndn_get(self->h, sw_name, NULL, FILE_WRITER_STARTWRITE_TIMEOUT, NULL, NULL, NULL, 0);
   if (res < 0) { ndn_charbuf_destroy(&sw_name); return false; }
   
+  LOG("file_writer_startwrite OK\n");
   ndn_charbuf_destroy(&sw_name); return true;
 }
 
@@ -86,6 +91,9 @@ enum ndn_upcall_res file_writer_incoming_interest(struct ndn_closure* closure, e
   struct file_writer* self = closure->data;
   assert(self != NULL && closure == self->closure);
   if (kind != NDN_UPCALL_INTEREST) return NDN_UPCALL_RESULT_OK;
+
+  LOG("file_writer_incoming_interest "); LOG_name(info->interest_ndnb+info->pi->offset[NDN_PI_B_Name], info->pi->offset[NDN_PI_E_Name]-info->pi->offset[NDN_PI_B_Name]);
+  LOG("\n");
   
   ++self->recent_interests;
   bool ok = false;

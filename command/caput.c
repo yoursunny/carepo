@@ -1,7 +1,6 @@
 // put a file and SHA256 metadata into repository
 #include "segment/rabin.h"
 #include "segment/writer.h"
-#include <ndn/uri.h>
 
 void usage(void) {
   printf("Usage: caput [-s] name filename\n");
