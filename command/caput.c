@@ -4,16 +4,25 @@
 #include <ndn/uri.h>
 
 void usage(void) {
-  printf("Usage: caput name filename\n");
+  printf("Usage: caput [-s] name filename\n");
 }
 
 int main(int argc, char** argv) {
-  if (argc != 3) {
+  bool sign_segments = false;
+  int opt;
+  while (-1 != (opt = getopt(argc, argv, "s"))) {
+    switch (opt) {
+      case 's':
+        sign_segments = true;
+        break;
+    }
+  }
+  if (argc-optind != 2) {
     usage();
     return 1;
   }
-  const char* name_str = argv[1];
-  const char* filename = argv[2];
+  const char* name_str = argv[optind+0];
+  const char* filename = argv[optind+1];
   
   struct ndn_charbuf* name = ndn_charbuf_create();
   ndn_name_from_uri(name, name_str);
@@ -26,7 +35,7 @@ int main(int argc, char** argv) {
   struct ndn* h = ndn_create();
   if (-1 == ndn_connect(h, NULL)) return 4;
 
-  struct file_writer* fw = file_writer_ctor(sl, file, h, name);
+  struct file_writer* fw = file_writer_ctor(sl, file, h, name, sign_segments);
   if (!file_writer_run(fw)) return 5;
   
   file_writer_dtor(&fw);

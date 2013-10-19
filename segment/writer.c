@@ -1,7 +1,7 @@
 #include "writer.h"
 #include <ndn/uri.h>
 
-struct file_writer* file_writer_ctor(struct segment_list* sl, FILE* file, struct ndn* h, struct ndn_charbuf* name) {
+struct file_writer* file_writer_ctor(struct segment_list* sl, FILE* file, struct ndn* h, struct ndn_charbuf* name, bool sign_segments) {
   struct file_writer* self = calloc(1, sizeof(*self));
   self->h = h;
   self->file = file;
@@ -12,6 +12,7 @@ struct file_writer* file_writer_ctor(struct segment_list* sl, FILE* file, struct
   self->name_comps = ndn_indexbuf_create();
   ndn_name_split(self->name, self->name_comps);
   self->sl = sl;
+  self->sign_segments = sign_segments;
   self->sent_segments = calloc(sl->count, sizeof(bool));
   self->remaining_segments = sl->count;
 
@@ -108,7 +109,7 @@ uintmax_t file_writer_extract_number(struct ndn_upcall_info* info) {
 }
 
 bool file_writer_respond_segment(struct file_writer* self, struct ndn_upcall_info* info) {
-  uintmax_t seg_i = file_writer_extract_number(info);
+  uint32_t seg_i = (uint32_t)file_writer_extract_number(info);
   if (seg_i >= self->sl->count) return false;
   if (!self->sent_segments[seg_i]) {
     self->sent_segments[seg_i] = true;
@@ -117,6 +118,37 @@ bool file_writer_respond_segment(struct file_writer* self, struct ndn_upcall_inf
   struct segment* seg = self->sl->list + seg_i;
   
   struct ndn_charbuf* reply = ndn_charbuf_create();
+  if (self->sign_segments) {
+    file_writer_segment_sign(self, reply, info, seg_i, seg);
+  } else {
+    file_writer_segment_hash(self, reply, info, seg_i, seg);
+  }
+  
+  ndn_put(self->h, reply->buf, reply->length);
+  ndn_charbuf_destroy(&reply);
+  return true;
+}
+
+bool file_writer_segment_sign(struct file_writer* self, struct ndn_charbuf* reply, struct ndn_upcall_info* info, uint32_t seg_i, struct segment* seg) {
+  struct ndn_charbuf* c = ndn_charbuf_create();
+  if (!file_writer_segment_readfile(self, c, seg)) { ndn_charbuf_destroy(&c); return false; }
+
+  struct ndn_charbuf* name = ndn_charbuf_create();
+  ndn_charbuf_append(name, info->interest_ndnb+info->pi->offset[NDN_PI_B_Name], info->pi->offset[NDN_PI_E_Name]-info->pi->offset[NDN_PI_B_Name]);
+  
+  struct ndn_signing_params sp = NDN_SIGNING_PARAMS_INIT;
+  if (seg_i+1 == self->sl->count) {
+    sp.sp_flags |= NDN_SP_FINAL_BLOCK;
+  }
+  
+  int res = ndn_sign_content(self->h, reply, name, &sp, c->buf, c->length);
+
+  ndn_charbuf_destroy(&name);
+  ndn_charbuf_destroy(&c);
+  return res==0;
+}
+
+bool file_writer_segment_hash(struct file_writer* self, struct ndn_charbuf* reply, struct ndn_upcall_info* info, uint32_t seg_i, struct segment* seg) {
   ndnb_element_begin(reply, NDN_DTAG_ContentObject);
 
   ndnb_element_begin(reply, NDN_DTAG_Signature);
@@ -143,21 +175,24 @@ bool file_writer_respond_segment(struct file_writer* self, struct ndn_upcall_inf
   
   ndnb_element_begin(reply, NDN_DTAG_Content);
   ndn_charbuf_append_tt(reply, seg->length, NDN_BLOB);
-  if (0 != fseek(self->file, seg->start, SEEK_SET)) { ndn_charbuf_destroy(&reply); return false; }
-  size_t read_size = 0;
-  uint8_t* buffer = ndn_charbuf_reserve(reply, seg->length);
-  while (read_size < seg->length) {
-    size_t read_want = seg->length - read_size;
-    size_t read_res = fread(buffer + read_size, 1, read_want, self->file);
-    read_size += read_res;
-  }
-  reply->length += seg->length;
+  if (!file_writer_segment_readfile(self, reply, seg)) return false;
   ndnb_element_end(reply);//Content
 
   ndnb_element_end(reply);//ContentObject
-  
-  ndn_put(self->h, reply->buf, reply->length);
-  ndn_charbuf_destroy(&reply);
+  return true;
+}
+
+bool file_writer_segment_readfile(struct file_writer* self, struct ndn_charbuf* c, struct segment* seg) {
+  if (0 != fseek(self->file, seg->start, SEEK_SET)) return false;
+  size_t read_size = 0;
+  uint8_t* buffer = ndn_charbuf_reserve(c, seg->length);
+  while (read_size < seg->length) {
+    size_t read_want = seg->length - read_size;
+    size_t read_res = fread(buffer + read_size, 1, read_want, self->file);
+    if (read_res == 0) return false;
+    read_size += read_res;
+  }
+  c->length += seg->length;
   return true;
 }
 
