@@ -58,6 +58,12 @@ def build(bld):
         install_path=None,
         )
 
+    bld.program(target='caget',
+        source=bld.path.ant_glob(['command/caget.c']),
+        use='objs',
+        install_path=None,
+        )
+
     if bld.env.UNIT:
         bld.program(target='unittest',
             source=bld.path.ant_glob([subdir+'/*_test*.c' for subdir in source_subdirs] + ['command/unittest.c']),
