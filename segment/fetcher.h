@@ -33,10 +33,9 @@ struct file_fetcher {
   int complete_namereqs;
 };
 
-#define FILE_FETCHER_HASHREQ_CONCURRENT 5
-#define FILE_FETCHER_HASHREQ_TIMEOUT 1000
-#define FILE_FETCHER_NAMEREQ_CONCURRENT 5
-#define FILE_FETCHER_NAMEREQ_TIMEOUT 4000
+#define FILE_FETCHER_HASHREQ_CONCURRENT 30
+#define FILE_FETCHER_HASHREQ_TIMEOUT 500
+#define FILE_FETCHER_NAMEREQ_CONCURRENT 10
 #define FILE_FETCHER_NAMEREQ_REEXPRESS 2
 
 struct file_fetcher* file_fetcher_ctor(struct segment_list* sl, FILE* file, struct ndn* h, struct ndn_charbuf* name);
@@ -45,6 +44,7 @@ bool file_fetcher_run(struct file_fetcher* self);
 // private begin
 void file_fetcher_build_reqs(struct file_fetcher* self);
 void file_fetcher_next_reqs(struct file_fetcher* self);
+struct ndn_charbuf* file_fetcher_hashreq_templ(void);
 void file_fetcher_send_hashreq(struct file_fetcher* self, int j);
 void file_fetcher_send_namereq(struct file_fetcher* self, int j);
 enum ndn_upcall_res file_fetcher_incoming_co_hashreq(struct ndn_closure* closure, enum ndn_upcall_kind kind, struct ndn_upcall_info* info);

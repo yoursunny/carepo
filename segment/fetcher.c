@@ -25,6 +25,13 @@ struct file_fetcher* file_fetcher_ctor(struct segment_list* sl, FILE* file, stru
 }
 
 void file_fetcher_dtor(struct file_fetcher** selfp) {
+  struct file_fetcher* self = *selfp;
+  if (self == NULL) return;
+  ndn_charbuf_destroy(&self->name);
+  ndn_indexbuf_destroy(&self->name_comps);
+  free(self->reqs);
+  free(self);
+  *selfp = NULL;
 }
 
 bool file_fetcher_run(struct file_fetcher* self) {
@@ -74,16 +81,46 @@ void file_fetcher_next_reqs(struct file_fetcher* self) {
   }
 }
 
+struct ndn_charbuf* file_fetcher_hashreq_templ(void) {
+  static struct ndn_charbuf* templ = NULL;
+  if (templ == NULL) {
+    templ = ndn_charbuf_create();
+    ndnb_element_begin(templ, NDN_DTAG_Interest);
+    ndnb_element_begin(templ, NDN_DTAG_Name);
+    ndnb_element_end(templ);//Name
+    ndnb_tagged_putf(templ, NDN_DTAG_MaxSuffixComponents, "0");
+    ndnb_tagged_putf(templ, NDN_DTAG_Scope, "2");
+    ndnb_append_tagged_binary_number(templ, NDN_DTAG_InterestLifetime, FILE_FETCHER_HASHREQ_TIMEOUT*4096/1000);
+    ndnb_element_end(templ);//Interest
+  }
+  return templ;
+}
+
 void file_fetcher_send_hashreq(struct file_fetcher* self, int j) {
   struct file_fetcher_req* req = self->reqs + j;
-  //LOG("file_fetcher_send_hashreq NOT-IMPLEMENTED\n");
-  req->status = FILE_FETCHER_REQ_NWAIT;
+  ++self->outstanding_hashreqs;
+  req->status = FILE_FETCHER_REQ_HSENT;
+  
+  struct ndn_charbuf* name = ndn_charbuf_create();
+  ndn_name_from_uri(name, "/%C1.R.SHA256");
+  ndn_name_append(name, req->hash, SEGMENT_HASHSZ);
+  
+  struct ndn_closure* closure = calloc(1, sizeof(*closure));
+  closure->p = &file_fetcher_incoming_co_hashreq;
+  closure->data = self;
+  closure->intdata = j;
+  
+  ndn_express_interest(self->h, name, closure, file_fetcher_hashreq_templ());
+  LOG("file_fetcher_send_hashreq %d ", j); LOG_name(name->buf, name->length); LOG("\n");
+
+  ndn_charbuf_destroy(&name);
 }
 
 void file_fetcher_send_namereq(struct file_fetcher* self, int j) {
   struct file_fetcher_req* req = self->reqs + j;
   req->reexpress_limit = FILE_FETCHER_NAMEREQ_REEXPRESS;
   ++self->outstanding_namereqs;
+  req->status = FILE_FETCHER_REQ_NSENT;
 
   struct ndn_charbuf* name = ndn_charbuf_create();
   ndn_charbuf_append_charbuf(name, self->name);
@@ -101,6 +138,23 @@ void file_fetcher_send_namereq(struct file_fetcher* self, int j) {
 }
 
 enum ndn_upcall_res file_fetcher_incoming_co_hashreq(struct ndn_closure* closure, enum ndn_upcall_kind kind, struct ndn_upcall_info* info) {
+  if (kind == NDN_UPCALL_FINAL) { free(closure); return NDN_UPCALL_RESULT_OK; }
+  struct file_fetcher* self = closure->data;
+  int j = (int)closure->intdata;
+  struct file_fetcher_req* req = self->reqs + j;
+  
+  if (kind == NDN_UPCALL_INTEREST_TIMED_OUT) {
+    --self->outstanding_hashreqs;
+    req->status = FILE_FETCHER_REQ_NWAIT;
+    LOG("file_fetcher_incoming_co_hashreq %d TIMEOUT\n", j); 
+  }
+  
+  if (kind == NDN_UPCALL_CONTENT || kind == NDN_UPCALL_CONTENT_UNVERIFIED || kind == NDN_UPCALL_CONTENT_BAD || kind == NDN_UPCALL_CONTENT_KEYMISSING || kind == NDN_UPCALL_CONTENT_RAW) {
+    --self->outstanding_hashreqs;
+    ++self->complete_hashreqs;
+    file_fetcher_save_co(self, req, info);
+  }
+  
   return NDN_UPCALL_RESULT_OK;
 }
 
@@ -136,13 +190,13 @@ void file_fetcher_save_co(struct file_fetcher* self, struct file_fetcher_req* re
   int res = ndn_content_get_value(info->content_ndnb, info->pco->offset[NDN_PCO_E], info->pco, &payload, &payloadsz);
   if (res != 0) { LOG("file_fetcher_save_co cannot get payload"); RETURN_FAIL; }
   
-  struct segment seghash;
+  uint8_t hash_actual[SEGMENT_HASHSZ];
   struct ndn_digest* digest = ndn_digest_create(NDN_DIGEST_SHA256);
   ndn_digest_init(digest);
   ndn_digest_update(digest, payload, payloadsz);
-  ndn_digest_final(digest, seghash.hash, sizeof(seghash.hash));
+  ndn_digest_final(digest, hash_actual, sizeof(hash_actual));
   ndn_digest_destroy(&digest);
-  if (0 != memcmp(seghash.hash, req->hash, sizeof(seghash.hash))) { LOG("file_fetcher_save_co hash mismatch"); RETURN_FAIL; }
+  if (0 != memcmp(hash_actual, req->hash, sizeof(hash_actual))) { LOG("file_fetcher_save_co hash mismatch"); RETURN_FAIL; }
   
   for (size_t k = 0; k < req->i->n; ++k) {
     uint32_t i = (uint32_t)req->i->buf[k];

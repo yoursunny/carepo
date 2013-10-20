@@ -2,10 +2,11 @@
 #define CAREPO_SEGMENT_SEGMENT_H_
 #include "defs.h"
 
+#define SEGMENT_HASHSZ 32
 struct segment {
   uint64_t start;
   uint16_t length;
-  uint8_t hash[32];
+  uint8_t hash[SEGMENT_HASHSZ];
 };
 
 struct segment_list {
