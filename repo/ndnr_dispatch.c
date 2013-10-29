@@ -80,7 +80,7 @@ process_input_message(struct ndnr_handle *h, struct fdholder *fdholder,
 {
     struct ndn_skeleton_decoder decoder = {0};
     struct ndn_skeleton_decoder *d = &decoder;
-    ssize_t dres;
+    ssize_t dres = 0; dres = dres;
     enum ndn_dtag dtag;
     struct content_entry *content = NULL;
     
@@ -167,7 +167,7 @@ r_dispatch_process_input(struct ndnr_handle *h, int fd)
     struct fdholder *fdholder = NULL;
     struct fdholder *source = NULL;
     ssize_t res;
-    ssize_t dres;
+    ssize_t dres = 0; dres = dres;
     ssize_t msgstart;
     unsigned char *buf;
     struct ndn_skeleton_decoder *d;

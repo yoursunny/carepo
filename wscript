@@ -64,6 +64,14 @@ def build(bld):
         install_path=None,
         )
 
+    bld.program(target='car',
+        source=bld.path.ant_glob(['repo/*.c']),
+        includes=['.','../ndnx/csrc/'],# TODO make NDNx location an option
+        lib='ndnsync',
+        use='objs',
+        install_path=None,
+        )
+
     if bld.env.UNIT:
         bld.program(target='unittest',
             source=bld.path.ant_glob([subdir+'/*_test*.c' for subdir in source_subdirs] + ['command/unittest.c']),

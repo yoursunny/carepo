@@ -330,7 +330,7 @@ r_io_shutdown_client_fd(struct ndnr_handle *h, int fd)
     struct fdholder *fdholder = NULL;
     enum cq_delay_class c;
     int m;
-    int res;
+    int res = 0; res = res;
     
     fdholder = r_io_fdholder_from_fd(h, fd);
     if (fdholder == NULL) {
