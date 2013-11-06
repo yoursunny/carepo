@@ -69,6 +69,9 @@
 #include "ndnr_match.h"
 #include "ndnr_sendq.h"
 #include "ndnr_io.h"
+#ifdef CAREPO
+#include "hash_store.h"
+#endif
 
 struct content_entry {
     ndnr_accession accession;   /**< permanent repository id */
@@ -601,6 +604,9 @@ r_store_init(struct ndnr_handle *h)
     btree->nodepool = r_init_confval(h, "NDNR_BTREE_NODE_POOL", 16, 2000000, 512);
     if (h->running != -1)
         r_store_index_needs_cleaning(h);
+#ifdef CAREPO
+    hash_store_ctor(h);
+#endif
 }
 
 PUBLIC int
@@ -612,6 +618,9 @@ r_store_final(struct ndnr_handle *h, int stable) {
         ndnr_msg(h, "r_store_final.%d-%d Errors while closing index", __LINE__, res);
     if (res >= 0 && stable)
         res = r_store_write_stable_point(h);
+#ifdef CAREPO
+    hash_store_dtor(&h->hashstore);
+#endif
     return(res);
 }
     
@@ -1380,6 +1389,9 @@ process_incoming_content(struct ndnr_handle *h, struct fdholder *fdholder,
     }
     r_store_set_content_timer(h, content, &obj);
     r_match_match_interests(h, content, &obj, NULL, fdholder);
+#ifdef CAREPO
+    hash_store_insert(h->hashstore, content->accession, content->cob, &obj);
+#endif
     return(content);
 Bail:
     r_store_forget_content(h, &content);

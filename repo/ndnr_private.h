@@ -53,6 +53,11 @@ struct ndn_btree;
 struct sync_plumbing;
 struct SyncBaseStruct;
 
+#define CAREPO
+#ifdef CAREPO
+struct hash_store;
+#endif
+
 /*
  * These are defined in this header.
  */
@@ -272,6 +277,9 @@ struct ndnr_handle {
     ndnr_accession active_enum[NDNR_MAX_ENUM]; /**< active sync enumerations */
     
     const char *directory;           /**< the repository directory */
+#ifdef CAREPO
+    struct hash_store* hashstore;
+#endif
 };
 
 struct content_queue {
