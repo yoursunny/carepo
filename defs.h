@@ -25,4 +25,8 @@ static inline void LOG_name(const uint8_t* name, size_t namesz) {
   ndn_charbuf_destroy(&uri);
 }
 
+static inline void LOG_hash(const uint8_t* hash, size_t hashsz) {
+  for (size_t i = 0; i < hashsz; ++i) LOG("%02x", hash[i]);
+}
+
 #endif//CAREPO_DEFS_H_

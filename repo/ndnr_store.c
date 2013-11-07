@@ -1389,9 +1389,6 @@ process_incoming_content(struct ndnr_handle *h, struct fdholder *fdholder,
     }
     r_store_set_content_timer(h, content, &obj);
     r_match_match_interests(h, content, &obj, NULL, fdholder);
-#ifdef CAREPO
-    hash_store_insert(h->hashstore, content->accession, content->cob, &obj);
-#endif
     return(content);
 Bail:
     r_store_forget_content(h, &content);
@@ -1508,6 +1505,9 @@ r_store_commit_content(struct ndnr_handle *h, struct content_entry *content)
         r_store_send_content(h, r_io_fdholder_from_fd(h, h->active_out_fd), content);
         r_store_content_change_flags(content, NDN_CONTENT_ENTRY_STABLE, 0);
     }
+#ifdef CAREPO
+    hash_store_insert(h->hashstore, content->accession, content->cob, NULL);
+#endif
     return(0);
 }
 

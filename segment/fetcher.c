@@ -88,7 +88,7 @@ struct ndn_charbuf* file_fetcher_hashreq_templ(void) {
     ndnb_element_begin(templ, NDN_DTAG_Interest);
     ndnb_element_begin(templ, NDN_DTAG_Name);
     ndnb_element_end(templ);//Name
-    ndnb_tagged_putf(templ, NDN_DTAG_MaxSuffixComponents, "0");
+    ndnb_tagged_putf(templ, NDN_DTAG_MaxSuffixComponents, "1");// counting implicit digest
     ndnb_tagged_putf(templ, NDN_DTAG_Scope, "2");
     ndnb_append_tagged_binary_number(templ, NDN_DTAG_InterestLifetime, FILE_FETCHER_HASHREQ_TIMEOUT*4096/1000);
     ndnb_element_end(templ);//Interest

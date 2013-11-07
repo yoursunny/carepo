@@ -13,6 +13,7 @@ struct hash_store* hash_store_ctor(struct ndnr_handle* h);
 void hash_store_dtor(struct hash_store** selfp);
 bool hash_store_insert(struct hash_store* self, ndnr_accession accession, struct ndn_charbuf* co, struct ndn_parsed_ContentObject* pco);
 ndnr_accession hash_store_find(struct hash_store* self, const uint8_t* hash);
+enum ndn_upcall_res hash_store_handle_proto_sha256(struct hash_store* self, struct ndn_upcall_info* info);
 // private begin
 void hash_store_clean(struct hash_store* self);
 // private end

@@ -32,6 +32,9 @@
 #define REPO_SWC "\xC1.R.sw-c"
 #define REPO_AF "\xC1.R.af"
 #define NAME_BE "\xC1.E.be"
+#ifdef CAREPO
+#define REPO_SHA256 "\xC1.R.SHA256"
+#endif
 
 struct ndnr_parsed_policy {
     unsigned char version[7];

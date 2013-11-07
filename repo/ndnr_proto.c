@@ -87,6 +87,9 @@ r_proto_bulk_import(struct ndn_closure *selfp,
                              enum ndn_upcall_kind kind,
                              struct ndn_upcall_info *info,
                              int marker_comp);
+#ifdef CAREPO
+enum ndn_upcall_res hash_store_handle_proto_sha256(struct hash_store* self, struct ndn_upcall_info* info);
+#endif
 static int
 name_comp_equal_prefix(const unsigned char *data,
                     const struct ndn_indexbuf *indexbuf,
@@ -184,6 +187,12 @@ r_proto_answer_req(struct ndn_closure *selfp,
                             NULL, info->interest_ndnb, info->pi->offset[NDN_PI_E]);
         res = r_proto_bulk_import(selfp, kind, info, marker_comp);
         goto Finish;
+#ifdef CAREPO
+    } else if (((marker_comp = ncomps - 3) == 0) &&
+                0 == r_util_name_comp_compare(info->interest_ndnb, info->interest_comps, marker_comp, REPO_SHA256, strlen(REPO_SHA256))) {
+        res = hash_store_handle_proto_sha256(ndnr->hashstore, info);
+        goto Finish;
+#endif
     }
     goto Bail;
 Bail:
