@@ -12,6 +12,7 @@ def options(opt):
     opt.add_option('--optimize',action='store_true',default=False,dest='optimize',help='optimize object code')
     opt.add_option('--unit',action='store_true',default=False,dest='unit',help='build unit tests')
     opt.add_option('--markdown',action='store_true',default=False,dest='markdown',help='build Markdown into HTML')
+    opt.add_option('--ndnxsrc',type='string',default='',dest='ndnxsrc_dir',help='''path to NDNx source code''')
 
 
 def configure(conf):
@@ -35,6 +36,11 @@ def configure(conf):
     if conf.options.markdown:
         conf.env.MARKDOWN = 1
         conf.find_program('pandoc', var='PANDOC')
+    
+    if conf.options.ndnxsrc_dir:
+        conf.env.ndnxsrc_dir = conf.options.ndnxsrc_dir
+    else:
+        conf.env.ndnxsrc_dir = '../ndnx'
 
 
 def build(bld):
@@ -66,7 +72,7 @@ def build(bld):
 
     bld.program(target='car',
         source=bld.path.ant_glob(['repo/*.c']),
-        includes=['.','../ndnx/csrc/'],# TODO make NDNx location an option
+        includes=['.',bld.env.ndnxsrc_dir+'/csrc/'],
         lib='ndnsync',
         use='objs',
         install_path=None,
