@@ -16,6 +16,8 @@ ndnr_accession hash_store_find(struct hash_store* self, const uint8_t* hash);
 enum ndn_upcall_res hash_store_handle_proto_sha256(struct hash_store* self, struct ndn_upcall_info* info);
 // private begin
 void hash_store_clean(struct hash_store* self);
+bool hash_store_verify_hash(struct hash_store* self, const uint8_t* payload, size_t payloadsz, const uint8_t* expect_hash);
+bool hash_store_build_reply(struct hash_store* self, struct ndn_charbuf* reply, const uint8_t* hash, const uint8_t* payload, size_t payloadsz);
 // private end
 
 // to send something: create content_entry* with cob without accession, ++h->cob_count, r_store_enroll_content

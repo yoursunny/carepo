@@ -56,6 +56,7 @@ struct SyncBaseStruct;
 #define CAREPO
 #ifdef CAREPO
 struct hash_store;
+#define REPO_SHA256 "\xC1.R.SHA256"
 #endif
 
 /*

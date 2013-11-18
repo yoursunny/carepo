@@ -4,6 +4,8 @@
 #include <errno.h>
 #include "segment/segment.h"
 #include "ndnr_store.h"
+#include <fcntl.h>
+#include <unistd.h>
 
 struct content_entry {
   ndnr_accession accession;
@@ -177,27 +179,53 @@ enum ndn_upcall_res hash_store_handle_proto_sha256(struct hash_store* self, stru
   if (res != 0) { LOG("cannot extract payload\n"); return NDN_UPCALL_RESULT_OK; }
   
   // verify hash
-  uint8_t hash2[SEGMENT_HASHSZ];
+  if (!hash_store_verify_hash(self, payload, payloadsz, hash)) { LOG("hash mismatch\n"); return NDN_UPCALL_RESULT_OK; }
+  
+  // build reply
+  struct ndn_charbuf* reply = ndn_charbuf_create();
+  hash_store_build_reply(self, reply, hash, payload, payloadsz);
+  
+  // send reply TODO use queues
+  res = ndn_put(info->h, reply->buf, reply->length);
+  if (res != 0) { LOG("cannot send\n"); ndn_charbuf_destroy(&reply); return NDN_UPCALL_RESULT_OK; }
+  ndn_charbuf_destroy(&reply);
+  LOG("OK\n");
+  return NDN_UPCALL_RESULT_INTEREST_CONSUMED;
+}
+
+bool hash_store_verify_hash(struct hash_store* self, const uint8_t* payload, size_t payloadsz, const uint8_t* expect_hash) {
+  uint8_t actual_hash[SEGMENT_HASHSZ];
   struct ndn_digest* digest = ndn_digest_create(NDN_DIGEST_SHA256);
   ndn_digest_init(digest);
   ndn_digest_update(digest, payload, payloadsz);
-  ndn_digest_final(digest, hash2, sizeof(hash2));
+  ndn_digest_final(digest, actual_hash, sizeof(actual_hash));
   ndn_digest_destroy(&digest);
-  if (0 != memcmp(hash, hash2, sizeof(hash2))) { LOG("hash mismatch\n"); return NDN_UPCALL_RESULT_OK; }
+  return 0 == memcmp(expect_hash, actual_hash, sizeof(actual_hash));
+}
+
+bool hash_store_build_reply(struct hash_store* self, struct ndn_charbuf* reply, const uint8_t* hash, const uint8_t* payload, size_t payloadsz) {
+  ndnb_element_begin(reply, NDN_DTAG_ContentObject);
+
+  ndnb_element_begin(reply, NDN_DTAG_Signature);
+  ndnb_tagged_putf(reply, NDN_DTAG_DigestAlgorithm, "SHA256");
+  ndnb_append_tagged_blob(reply, NDN_DTAG_SignatureBits, hash, SEGMENT_HASHSZ);
+  ndnb_element_end(reply);//Signature
   
-  // build reply co TODO don't sign
-  struct ndn_charbuf name;
-  name.buf = (uint8_t*)info->interest_ndnb + info->pi->offset[NDN_PI_B_Name];
-  name.length = info->pi->offset[NDN_PI_E_Name] - info->pi->offset[NDN_PI_B_Name];
-  struct ndn_charbuf* co = ndn_charbuf_create();
-  res = ndn_sign_content(info->h, co, &name, NULL, payload, payloadsz);
-  if (res != 0) { LOG("cannot sign\n"); ndn_charbuf_destroy(&co); return NDN_UPCALL_RESULT_OK; }
+  ndnb_element_begin(reply, NDN_DTAG_Name);
+  ndnb_append_tagged_blob(reply, NDN_DTAG_Component, REPO_SHA256, sizeof(REPO_SHA256)-1);
+  ndnb_append_tagged_blob(reply, NDN_DTAG_Component, hash, SEGMENT_HASHSZ);
+  ndnb_element_end(reply);//Name
   
-  // send reply TODO use queues
-  res = ndn_put(info->h, co->buf, co->length);
-  if (res != 0) { LOG("cannot send\n"); ndn_charbuf_destroy(&co); return NDN_UPCALL_RESULT_OK; }
-  ndn_charbuf_destroy(&co);
-  LOG("OK\n");
-  return NDN_UPCALL_RESULT_INTEREST_CONSUMED;
+  ndnb_element_begin(reply, NDN_DTAG_SignedInfo);
+  ndnb_append_tagged_blob(reply, NDN_DTAG_PublisherPublicKeyDigest, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 32);
+  ndnb_element_begin(reply, NDN_DTAG_Timestamp);
+  ndnb_append_now_blob(reply, NDN_MARKER_NONE);
+  ndnb_element_end(reply);//Timestamp
+  ndnb_element_end(reply);//SignedInfo
+  
+  ndnb_append_tagged_blob(reply, NDN_DTAG_Content, payload, payloadsz);
+
+  ndnb_element_end(reply);//ContentObject
+  return true;
 }
 
