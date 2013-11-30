@@ -22,7 +22,7 @@ struct file_writer {
 
 #define FILE_WRITER_METADATA_BLOCKSZ 4096
 #define FILE_WRITER_STARTWRITE_TIMEOUT 4000 // file_writer_startwrite fails if startwrite is not responded in this duration
-#define FILE_WRITER_RUN_TIMEOUT_INTERVAL 1000 // file_writer_run fails if no incoming Interest in this duration
+#define FILE_WRITER_RUN_TIMEOUT_INTERVAL 10000 // file_writer_run fails if no incoming Interest in this duration
 
 struct file_writer* file_writer_ctor(struct segment_list* sl, FILE* file, struct ndn* h, struct ndn_charbuf* name, bool sign_segments);
 void file_writer_dtor(struct file_writer** selfp);
