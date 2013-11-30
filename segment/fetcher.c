@@ -1,5 +1,6 @@
 #include "fetcher.h"
 #include <ndn/digest.h>
+#include <ndn/hashtb.h>
 
 struct file_fetcher* file_fetcher_ctor(struct segment_list* sl, FILE* file, struct ndn* h, struct ndn_charbuf* name) {
   struct file_fetcher* self = calloc(1, sizeof(*self));
@@ -48,25 +49,27 @@ bool file_fetcher_run(struct file_fetcher* self) {
 
 void file_fetcher_build_reqs(struct file_fetcher* self) {
   self->reqs = calloc(self->sl->count, sizeof(struct file_fetcher_req));
+  struct hashtb* ht = hashtb_create(sizeof(struct file_fetcher_req*), NULL);
+  struct hashtb_enumerator ee; struct hashtb_enumerator* e = &ee;
+  hashtb_start(ht, e);
+  
   for (uint32_t i = 0; i < self->sl->count; ++i) {
     const struct segment* seg = self->sl->list + i;
-    bool duplicate = false;
-    for (int j = 0; j < self->total_reqs; ++j) {
-      struct file_fetcher_req* req = self->reqs + j;
-      if (0 == memcmp(seg->hash, req->hash, sizeof(seg->hash))) {
-        duplicate = true;
-        ndn_indexbuf_append_element(req->i, i);
-        break;
-      }
-    }
-    if (!duplicate) {
-      struct file_fetcher_req* req = self->reqs + self->total_reqs;
+    struct file_fetcher_req* req;
+    if (HT_OLD_ENTRY == hashtb_seek(e, seg->hash, sizeof(seg->hash), 0)) {
+      req = *((struct file_fetcher_req**)e->data);
+    } else {
+      req = self->reqs + self->total_reqs;
       ++self->total_reqs;
+      *((struct file_fetcher_req**)e->data) = req;
       req->hash = seg->hash;
       req->i = ndn_indexbuf_create();
-      ndn_indexbuf_append_element(req->i, i);
     }
+    ndn_indexbuf_append_element(req->i, i);
   }
+  
+  hashtb_end(e);
+  hashtb_destroy(&ht);
   LOG("file_fetcher_build_reqs %" PRIu32 " segments, %d requests\n", self->sl->count, self->total_reqs);
 }
 
