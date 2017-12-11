@@ -47,4 +47,8 @@ It issues hash requests to find identical segments in nearby repositories, and d
 * Prefix ``/%C1.R.SHA256`` should be forwarded to a multicase group, so that neighbor nodes could receive hash requests.
 * Downloaded files should be published into local repository with caput, to be used in serving hash requests.
 
+## Project Reports
 
+**Proposal**: [document](docs/proposal.pdf) [presentation](docs/proposal.pptx)  
+**Checkpoint**: [presentation](docs/checkpoint.pptx)  
+**Final**: [report](docs/report.pdf) [presentation](docs/final.pptx)
